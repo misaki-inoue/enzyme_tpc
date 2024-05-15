@@ -69,7 +69,7 @@ gdh_rtpc <- ggplot(gdh, aes(temp, rate)) +
   geom_point(size=3) +
   geom_line(aes(temp, .fitted), preds_rtpc, col = '#4f4789', size=1)+
   ylab("Relative activity (%)") +
-  xlab("Temperature (ºC)") +
+  xlab("Temperature (ÂºC)") +
   ggtitle("rTPC Model fittting (Sharpe-Schoolfield)")
 gdh_rtpc
 
