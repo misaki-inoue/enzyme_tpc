@@ -410,7 +410,7 @@ fit_Sharpe_Schoolfield_6_pars <- function(dataset)
     
     result <- (B_0 * (temp/T_ref) * exp( (DH_A/R) * ((1/T_ref) - (1/temp)) ) ) / ( 1 + exp( (-DH_L/R) * ((1/T_L50) - (1/temp)) ) + exp( (DH_H/R) * ((1/T_H50) - (1/temp)) ) )
     
-    if ( T_L50 >= T_H50 || is.na(result) || any(result <= 0) )
+    if ( T_L50 >= T_H50 || any(is.nan(result)) || any(result <= 0) )
     {
       return(rep(1e10, length(temp)))
     } else
