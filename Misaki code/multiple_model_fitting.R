@@ -92,9 +92,9 @@ multi_fit <- function(df, model_func, model_name) {
 }
 
 hinshel <- multi_fit(df=data_to_fit, fit_Hinshelwood_4_pars, "Hinshelwood")
-johnson <- multi_fit(df=data_to_fit, fit_Johnson_Lewin_4_pars, "Johnson_Lewin")
-sharpe <- multi_fit(df=data_to_fit, fit_Sharpe_Schoolfield_6_pars, "Sharpe_Schoolfield")
-ratkowsky <- multi_fit(data_to_fit, fit_Ross_Ratkowsky_5_pars, "Ratkowksy")
+johnson <- multi_fit(df=data_to_fit, fit_Johnson_Lewin_4_pars, "Johnson-Lewin")
+sharpe <- multi_fit(df=data_to_fit, fit_Sharpe_Schoolfield_6_pars, "Sharpe-Schoolfield")
+ratkowsky <- multi_fit(data_to_fit, fit_Ross_Ratkowsky_5_pars, "Ratkowsky")
 hobbs <- multi_fit(data_to_fit, fit_Hobbs_4_pars, "Hobbs")
 eaar <- multi_fit(data_to_fit, fit_Enzyme_Assisted_Arrhenius_5_pars, "EAAR")
 ritchie <- multi_fit(data_to_fit, fit_Ritchie_4_pars,"Ritchie")
