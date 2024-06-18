@@ -8,22 +8,9 @@ setwd("C:/Users/mi620/OneDrive - Imperial College London/Year 4/FYP/R_stuff")
 setwd("C:/Users/thinkpad/OneDrive - Imperial College London/Year 4/FYP/R_stuff")
 
 stats <- read.csv("seven_models_stats_v1.csv")
-stats_bic <- read.csv("seven_models_stats_BIC.csv")
 
 plot.new()
 par(mfrow=c(1,1))
-# AIC distribution
-hist(stats$AIC, main= "Distribution of AICc values")
-
-stats$AIC <- as.numeric(stats$AIC)
-stats$AIC[is.infinite(stats$AIC)] <- NA
-stats$AIC[is.nan(stats$AIC)] <- NA
-
-corrections <- 
-  c("Sharpe_Schoolfield" = "Sharpe-Schoolfield",
-    "Johnson_Lewin" =  "Johnson-Lewin",
-    "Ratkowksy" = "Ross-Ratkowsky")
-stats <- stats %>% mutate(model = str_replace_all(model, corrections))
 
 ggplot(stats, aes(enzyme, model, fill= AIC)) + 
   geom_tile() +
@@ -95,51 +82,3 @@ ggplot(stats_bic, aes(x = AIC, y = BIC)) +
   facet_wrap(~ model, scales = "free") +
   labs(x = "AIC", y = "BIC")
 
-# Bad model fitting for Johnson Lewin
-
-azo <- data_to_fit %>%
-  filter(originalid == "AZO001")
-
-fit_and_plot <- function(df, model_func, model_name) {
-  enz_id <- df %>%
-    distinct(originalid)
-  
-  tpc_to_fit <- df %>%
-    filter(originalid %in% enz_id$originalid) %>%
-    select(originalid, interactor1temp, originaltraitvalue)
-  
-  colnames(tpc_to_fit) <- c('originalid','temp','trait_value')
-  
-  unique_enzyme_ids <- unique(tpc_to_fit$originalid)
-  num_enzymes <- length(unique_enzyme_ids)
-  
-  for (i in 1:num_enzymes) {
-    enzyme_id <- unique_enzyme_ids[i]
-    enzyme_data <- subset(tpc_to_fit, originalid == enzyme_id) %>%
-      select(temp, trait_value)
-    fit <- model_func(enzyme_data)
-  
-    temp_pts <- data.frame(temp = seq(min(enzyme_data$temp), max(enzyme_data$temp), 0.5))
-    preds <- augment(fit, newdata = temp_pts)
-    plot(enzyme_data$temp, log(enzyme_data$trait_value),
-         type = "p",
-         main = paste(enzyme_id, model_name),
-         xlab = "Temperature",
-         ylab = "Activity")
-    lines(preds$temp, preds$.fitted, col = "red")
-  }
-}
-  
-temp_pts <- data.frame(temp = seq(min(azo$temp), max(azo), 0.5))
-preds <- augment(fit, newdata = temp_pts)
-plot(adh$temp, log(adh$trait_value),
-     type = "p",
-     main = paste(df,model_name),
-     xlab = "Temperature",
-     ylab = "Activity")
-lines(preds$temp, preds$.fitted, col = "red")
-
-azo <- data_to_fit %>%
-  filter(originalid == "AZO001") 
-
-fit_and_plot(azo, fit_Johnson_Lewin_4_pars, "Johnson-Lewin")

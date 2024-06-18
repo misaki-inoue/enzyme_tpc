@@ -67,27 +67,37 @@ make_fitted_plot <- function(df, enzyme_id, model_list, name_list) {
 make_fitted_plot(azo, "AZO001", seven_models, seven_models_names)
 make_fitted_plot(gpp, "GPP001", seven_models, seven_models_names)
 
-cbPalette <- c("#E69F00", "#56B4E9","#F0E442", "#009E73",  "#0072B2", "#D55E00", "#CC79A7")
-ggplot(data = pred_values, aes(temp, .fitted)) +
-  geom_line(aes(col=Models, linewidth=linetype)) +
-  scale_linetype_manual(values = c(1,2)) +
-  scale_linewidth_manual(values = c(2.5,0.7), guide="none") +
-  scale_colour_manual(values=cbPalette) +
-  labs(x = "Temperature", y = "log(% Enzyme Activity)",
-       title = paste("Enzyme ID:", enzyme_id)) +
-  geom_point(data = azo, aes(temp, log(trait_value)))+
-  theme_bw(base_size = 12)
+# Use function below to plot a single model onto single TPC
+fit_and_plot <- function(df, model_func, model_name) {
+  enz_id <- df %>%
+    distinct(originalid)
+  
+  tpc_to_fit <- df %>%
+    filter(originalid %in% enz_id$originalid) %>%
+    select(originalid, interactor1temp, originaltraitvalue)
+  
+  colnames(tpc_to_fit) <- c('originalid','temp','trait_value')
+  
+  unique_enzyme_ids <- unique(tpc_to_fit$originalid)
+  num_enzymes <- length(unique_enzyme_ids)
+  
+  for (i in 1:num_enzymes) {
+    enzyme_id <- unique_enzyme_ids[i]
+    enzyme_data <- subset(tpc_to_fit, originalid == enzyme_id) %>%
+      select(temp, trait_value)
+    fit <- model_func(enzyme_data)
+    
+    temp_pts <- data.frame(temp = seq(min(enzyme_data$temp), max(enzyme_data$temp), 0.5))
+    preds <- augment(fit, newdata = temp_pts)
+    plot(enzyme_data$temp, log(enzyme_data$trait_value),
+         type = "p",
+         main = paste(enzyme_id, model_name),
+         xlab = "Temperature",
+         ylab = "Activity")
+    lines(preds$temp, preds$.fitted, col = "red")
+  }
+}
 
-fit <- fit_Ross_Ratkowsky_5_pars(adh)
-temp_pts <- data.frame(temp = seq(min(adh$temp), max(adh$temp), 0.5))
-preds <- augment(fit, newdata = temp_pts)
-plot(adh$temp, log(adh$trait_value),
-     type = "p",
-     main = "ADH Sharpe",
-     xlab = "Temperature",
-     ylab = "Activity")
-lines(preds$temp, preds$.fitted, col = "red")
-ggplot(data = preds, aes(temp, .fitted)) +
-  geom_line()
+fit_and_plot(azo, fit_Johnson_Lewin_4_pars, "Johnson-Lewin")
 
        
