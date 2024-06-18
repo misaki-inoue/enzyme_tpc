@@ -9,25 +9,20 @@ library(geiger)
 library(tidyr)
 
 setwd("C:/Users/mi620/OneDrive - Imperial College London/Year 4/FYP/R_stuff")
-setwd("C:/Users/44785/OneDrive - Imperial College London/Year 4/FYP/R_stuff")
 
-enzyme <- read.csv("Database_FYP.csv")
+enzyme <- read.csv("BacterialData.csv")
 
-first_thirty <- enzyme %>% # Only first thirty enzymes are selected to reduce computing time
-  distinct(originalid) %>%
-  head(30)
-
-thirty_enz <- enzyme %>%
-  filter(originalid %in% first_thirty$originalid) %>%
-  select(originalid, interactor1temp, originaltraitvalue)
-
-# Load functions all 8 functions from "mech_model_functions" before running multi_fit()
-# It will print TPCs that do not have a fitted model or the TPCs with fitted model wiht AICc = infinity
+# Load functions all 7 functions from "mech_model_functions" before running multi_fit()
 
 multi_fit <- function(df, model_func, model_name) {
   plot.new()
   subplot_counter = 0
-  stats <- data.frame(model = character(), enzyme = character(), Rsquared = numeric(), AICc = numeric(), BIC = numeric())
+  stats <- data.frame(model = character(), 
+                      enzyme = character(), 
+                      Rsquared = numeric(), 
+                      AIC = numeric(),
+                      BIC = numeric())
+  #AICc = numeric(), BIC = numeric()
   
   enz_id <- df %>%
     distinct(originalid)
@@ -59,57 +54,36 @@ multi_fit <- function(df, model_func, model_name) {
     })
     
     if (!is.null(fit)) {
-      rss <- sum((enzyme_data$trait_value - exp(fitted(fit)))^2)
-      tss <- sum((enzyme_data$trait_value - mean(enzyme_data$trait_value))^2)
-      r_squared <- 1 - (rss/tss)
+      subplot_counter <- subplot_counter + 1
       
-      aicc_val <- AICc(fit)
+      aic_val <- AIC(fit)
+      bic_val <- BIC(fit)
       
-      loglik <- logLik(fit)
-      n   <- attributes(loglik)$nobs 
-      p   <- attributes(loglik)$df
-      dev <- -2*as.numeric(loglik)
-      bic_val  <- dev +  p * log(n)
+      stats[i,] <- c(model_name, enzyme_id, r_squared, aic_val, bic_val) #aicc_val, bic_val
+      print(paste("Fit for", enzyme_id, "is completed.", i, "out of", num_enzymes))
       
-      stats[i,] <- c(model_name, enzyme_id, r_squared, aicc_val, bic_val)
-      print(paste("Fit for", enzyme_id, "is completed"))
-      
-      if (aicc_val == Inf) {
-        subplot_counter <- subplot_counter + 1
-        temp_pts <- data.frame(temp = seq(min(enzyme_data$temp), max(enzyme_data$temp), 0.5))
-        preds <- augment(fit, newdata = temp_pts)
-        plot(enzyme_data$temp, log(enzyme_data$trait_value),
-             type = "p",
-             main = enzyme_id,
-             xlab = "Temperature",
-             ylab = "Activity")
-        lines(preds$temp, preds$.fitted, col = "red")
-        if (subplot_counter == 1 || subplot_counter == 30) {
-          title(main = model_name, outer = TRUE, cex.main = 2)
-        }
+      temp_pts <- data.frame(temp = seq(min(enzyme_data$temp), max(enzyme_data$temp), 0.5))
+      preds <- augment(fit, newdata = temp_pts)
+      plot(enzyme_data$temp, log(enzyme_data$trait_value),
+           type = "p",
+           main = enzyme_id,
+           xlab = "Temperature",
+           ylab = "Activity")
+      lines(preds$temp, preds$.fitted, col = "red")
+      if (subplot_counter == 1 || subplot_counter %% 30 == 1) {
+        title(main = model_name, outer = TRUE, cex.main = 2)
       }
-      # temp_pts <- data.frame(temp = seq(min(enzyme_data$temp), max(enzyme_data$temp), 0.5))
-      # preds <- augment(fit, newdata = temp_pts)
-      # plot(enzyme_data$temp, log(enzyme_data$trait_value),
-      #      type = "p",
-      #      main = enzyme_id,
-      #      xlab = "Temperature",
-      #      ylab = "Activity")
-      # lines(preds$temp, preds$.fitted, col = "red")
-      # if (i == 59 || i == 89) {
-      #   title(main = model_name, outer = TRUE, cex.main = 2)
-      # }
     }
     else {
       subplot_counter <- subplot_counter + 1
-      print(paste("Fit for", enzyme_id, "is NULL"))
+      print(paste("Fit for", enzyme_id, "is NULL.", i, "out of", num_enzymes))
       stats[i,] <- c(model_name ,enzyme_id, NA, NA, NA)
       plot(enzyme_data$temp, log(enzyme_data$trait_value),
            type = "p",
            main = enzyme_id,
            xlab = "Temperature",
            ylab = "Activity")
-      if (subplot_counter == 1 || subplot_counter == 30) {
+      if (subplot_counter == 1 || subplot_counter %% 30 == 1) {
         title(main = model_name, outer = TRUE, cex.main = 2)
       }
     }
@@ -117,8 +91,6 @@ multi_fit <- function(df, model_func, model_name) {
   return(stats)
 }
 
-
-vant <- multi_fit(df=data_to_fit, fit_Vant_Hoff_4_pars, "Vant_Hoff")
 hinshel <- multi_fit(df=data_to_fit, fit_Hinshelwood_4_pars, "Hinshelwood")
 johnson <- multi_fit(df=data_to_fit, fit_Johnson_Lewin_4_pars, "Johnson_Lewin")
 sharpe <- multi_fit(df=data_to_fit, fit_Sharpe_Schoolfield_6_pars, "Sharpe_Schoolfield")
@@ -128,20 +100,5 @@ eaar <- multi_fit(data_to_fit, fit_Enzyme_Assisted_Arrhenius_5_pars, "EAAR")
 ritchie <- multi_fit(data_to_fit, fit_Ritchie_4_pars,"Ritchie")
 
 stats <- bind_rows(vant, hinshel, johnson, sharpe, ratkowsky, hobbs, eaar, ritchie)
-#write.csv(stats, "eight_models_stats_v1.csv", row.names = FALSE)
+write.csv(stats, "seven_models_stats_v1.csv", row.names = FALSE)
 
-stats <- read.csv("eight_models_stats_v1.csv")
-stats <- stats %>%
-  mutate(AICc = ifelse(AICc == "Inf", NA, AICc))
-stats$AICc <- as.numeric(stats$AICc)
-
-hist(stats$AICc, main = "Distribution of AICc values",
-     xlab="AICc values")
-
-ggplot(stats, aes(enzyme, model, fill= AICc)) + 
-  geom_tile() +
-  scale_fill_gradient(na.value = "grey90")+
-  theme(axis.text.x=element_blank(),
-        axis.ticks.x=element_blank(),
-        panel.background = element_blank()) +
-  labs(y="Mechanistic Models", x="enzyme TPC")
