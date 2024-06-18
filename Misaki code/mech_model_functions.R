@@ -1,72 +1,3 @@
-##########################################
-# VAN'T HOFF MODEL (4 parameters)        #
-# (Portner et al., Biogeosciences, 2010) #
-#                                        #
-# Parameters: a, b, d, e                 #
-##########################################
-fit_Vant_Hoff_4_pars <- function(dataset)
-{
-  
-  # Set the starting value of a arbitrarily to 1.
-  a_start <- 1
-  
-  # Set the starting value of b arbitrarily to 0.6.
-  b_start <- 0.6
-  
-  # Set the starting value of d arbitrarily to 1.
-  d_start <- 1
-  
-  # Set the starting value of e arbitrarily to 2.
-  e_start <- 2
-  
-  function_to_be_fitted <- function(a, b, d, e, temp)
-  {
-    temp <- temp + 273.15
-    
-    if ( b == 0 || d == 0 || e == 0 )
-    {
-      return(rep(1e10, length(temp)))
-    } else
-    {
-      return(
-        log(
-          a * exp(-b/temp) * (temp^d) * exp(e*temp) 
-        )
-      )
-    }
-  }
-  
-  fit <- NULL
-  
-  try(
-    fit <- nls_multstart(
-      log(trait_value) ~ function_to_be_fitted(
-        a, b, d, e, temp = temp
-      ),
-      data = dataset,
-      iter = 1000,
-      start_lower = c(
-        a = 0.5 * a_start,	b = 0.5 * b_start,
-        d = 0.5 * d_start,	e = 0.5 * e_start
-      ),
-      start_upper = c(
-        a = 1.5 * a_start,	b = 1.5 * b_start,
-        d = 1.5 * d_start,	e = 1.5 * e_start
-      ),
-      supp_errors = 'Y',
-      convergence_count = FALSE,
-      control = nls.lm.control(
-        ftol = .Machine$double.eps, ptol = .Machine$double.eps, maxiter = 1024, 
-        maxfev = 100000
-      ),
-      lower = c(0, -Inf, -Inf, -Inf),
-      upper = c(Inf, Inf, Inf, Inf)
-    )
-  )
-  
-  return(fit)
-}
-
 ####################################
 # HINSHELWOOD MODEL (4 parameters) #
 # (Hinshelwood, 1946)              #
@@ -94,24 +25,26 @@ fit_Hinshelwood_4_pars <- function(dataset)
   # ln(trait_value) ~ intercept + slope * 1/(R * (T + 273.15)))
   #
   # Otherwise, just set E_1 to 0.6.
-  T_pk <- max(dataset$temp[dataset$trait_value == max(dataset$trait_value)])
   
-  dataset_before_peak <- dataset[dataset$temp < T_pk,]
-  if ( 
-    nrow(dataset_before_peak) < 3 || 
-    length(unique(dataset_before_peak$temp)) < 3 || 
-    length(unique(dataset_before_peak$trait_value)) < 3 
-  )
-  {
-    E_1_start <- 0.6
-  } else
-  {
-    y_vals <- log(dataset_before_peak$trait_value)
-    x_vals <- 1/(R * (dataset_before_peak$temp + 273.15))
-    
-    # Take the absolute value.
-    E_1_start <- abs(lm(y_vals ~ x_vals)$coefficients[2])
-  }
+  T_pk <- max(dataset$temp[dataset$trait_value == max(dataset$trait_value)])
+  # 
+  # dataset_before_peak <- dataset[dataset$temp < T_pk,]
+  # if ( 
+  #   nrow(dataset_before_peak) < 3 || 
+  #   length(unique(dataset_before_peak$temp)) < 3 || 
+  #   length(unique(dataset_before_peak$trait_value)) < 3 
+  # )
+  # {
+  #   E_1_start <- 0.6
+  # } else
+  # {
+  #   y_vals <- log(dataset_before_peak$trait_value)
+  #   x_vals <- 1/(R * (dataset_before_peak$temp + 273.15))
+  #   
+  #   # Take the absolute value.
+  #   E_1_start <- abs(lm(y_vals ~ x_vals)$coefficients[2])
+  # }
+  E_1_start <- 0.6
   
   # If the dataset has measurements after the thermal optimum, 
   # a starting value for E_2 can be set as the slope of the following 
@@ -120,22 +53,24 @@ fit_Hinshelwood_4_pars <- function(dataset)
   # ln(trait_value) ~ intercept + slope * 1/(R * (T + 273.15))
   #
   # Otherwise, just set E_2 to 3.
-  dataset_after_peak <- dataset[dataset$temp > T_pk,]
-  if ( 
-    nrow(dataset_after_peak) < 3 || 
-    length(unique(dataset_after_peak$temp)) < 3 || 
-    length(unique(dataset_after_peak$trait_value)) < 3 
-  )
-  {
-    E_2_start <- 3
-  } else
-  {
-    y_vals <- log(dataset_after_peak$trait_value)
-    x_vals <- 1/(R * (dataset_after_peak$temp + 273.15))
-    
-    # Take the absolute value.
-    E_2_start <- abs(lm(y_vals ~ x_vals)$coefficients[2])
-  }
+  
+  # dataset_after_peak <- dataset[dataset$temp > T_pk,]
+  # if ( 
+  #   nrow(dataset_after_peak) < 3 || 
+  #   length(unique(dataset_after_peak$temp)) < 3 || 
+  #   length(unique(dataset_after_peak$trait_value)) < 3 
+  # )
+  # {
+  #   E_2_start <- 3
+  # } else
+  # {
+  #   y_vals <- log(dataset_after_peak$trait_value)
+  #   x_vals <- 1/(R * (dataset_after_peak$temp + 273.15))
+  #   
+  #   # Take the absolute value.
+  #   E_2_start <- abs(lm(y_vals ~ x_vals)$coefficients[2])
+  # }
+  E_2_start <- 3
   
   function_to_be_fitted <- function(a, E_1, b, E_2, temp)
   {
@@ -214,27 +149,29 @@ fit_Johnson_Lewin_4_pars <- function(dataset)
   #
   # Otherwise, just set E to 0.6 eV.
   
-  dataset_before_peak <- dataset[dataset$temp < T_pk_start,]
-  if ( 
-    nrow(dataset_before_peak) < 3 || 
-    length(unique(dataset_before_peak$temp)) < 3 || 
-    length(unique(dataset_before_peak$trait_value)) < 3 
-  )
-  {
-    E_start <- 0.6
-  } else
-  {
-    y_vals <- log(dataset_before_peak$trait_value)
-    x_vals <- 1/(k * (dataset_before_peak$temp + 273.15))
-    
-    # Take the absolute value.
-    E_start <- abs(lm(y_vals ~ x_vals)$coefficients[2])
-    
-    if ( E_start >= 10 )
-    {
-      E_start <- 0.6
-    }
-  }
+  # dataset_before_peak <- dataset[dataset$temp < T_pk_start,]
+  # if ( 
+  #   nrow(dataset_before_peak) < 3 || 
+  #   length(unique(dataset_before_peak$temp)) < 3 || 
+  #   length(unique(dataset_before_peak$trait_value)) < 3 
+  # )
+  # {
+  #   E_start <- 0.6
+  # } else
+  # {
+  #   y_vals <- log(dataset_before_peak$trait_value)
+  #   x_vals <- 1/(k * (dataset_before_peak$temp + 273.15))
+  #   
+  #   # Take the absolute value.
+  #   E_start <- abs(lm(y_vals ~ x_vals)$coefficients[2])
+  #   
+  #   if ( E_start >= 10 )
+  #   {
+  #     E_start <- 0.6
+  #   }
+  # }
+  
+  E_start <- 0.6
   
   # If the dataset has measurements after the thermal optimum, 
   # a starting value for E_D can be set as the slope of the following 
@@ -243,32 +180,35 @@ fit_Johnson_Lewin_4_pars <- function(dataset)
   # ln(trait_value) ~ intercept + slope * 1/(k * (T + 273.15))
   #
   # Otherwise, just set E_D to 3 eV.
-  dataset_after_peak <- dataset[dataset$temp > T_pk_start,]
-  if ( 
-    nrow(dataset_after_peak) < 3 || 
-    length(unique(dataset_after_peak$temp)) < 3 || 
-    length(unique(dataset_after_peak$trait_value)) < 3 
-  )
-  {
-    E_D_start <- 3
-  } else
-  {
-    y_vals <- log(dataset_after_peak$trait_value)
-    x_vals <- 1/(k * (dataset_after_peak$temp + 273.15))
-    
-    # Take the absolute value.
-    E_D_start <- abs(lm(y_vals ~ x_vals)$coefficients[2])
-    
-    if ( E_D_start >= 50 )
-    {
-      E_D_start <- 3
-    }
-  }
   
-  if ( E_start >= E_D_start )
-  {
-    E_start <- 0.9 * E_D_start
-  }
+  # dataset_after_peak <- dataset[dataset$temp > T_pk_start,]
+  # if ( 
+  #   nrow(dataset_after_peak) < 3 || 
+  #   length(unique(dataset_after_peak$temp)) < 3 || 
+  #   length(unique(dataset_after_peak$trait_value)) < 3 
+  # )
+  # {
+  #   E_D_start <- 3
+  # } else
+  # {
+  #   y_vals <- log(dataset_after_peak$trait_value)
+  #   x_vals <- 1/(k * (dataset_after_peak$temp + 273.15))
+  #   
+  #   # Take the absolute value.
+  #   E_D_start <- abs(lm(y_vals ~ x_vals)$coefficients[2])
+  #   
+  #   if ( E_D_start >= 50 )
+  #   {
+  #     E_D_start <- 3
+  #   }
+  # }
+  
+  E_D_start <- 3
+  
+  # if ( E_start >= E_D_start )
+  # {
+  #   E_start <- 0.9 * E_D_start
+  # }
   
   function_to_be_fitted <- function(B_0, E, T_pk, E_D, temp)
   {
@@ -344,24 +284,26 @@ fit_Sharpe_Schoolfield_6_pars <- function(dataset)
   # ln(trait_value) ~ intercept + slope * 1/(R * (T + 273.15))
   #
   # Otherwise, just set DH_A to 15000.
-  T_pk <- max(dataset$temp[dataset$trait_value == max(dataset$trait_value)])
   
-  dataset_before_peak <- dataset[dataset$temp < T_pk,]
-  if ( 
-    nrow(dataset_before_peak) < 3 || 
-    length(unique(dataset_before_peak$temp)) < 3 || 
-    length(unique(dataset_before_peak$trait_value)) < 3 
-  )
-  {
-    DH_A_start <- 15000
-  } else
-  {
-    y_vals <- log(dataset_before_peak$trait_value)
-    x_vals <- 1/(R * (dataset_before_peak$temp + 273.15))
-    
-    # Take the absolute value.
-    DH_A_start <- abs(lm(y_vals ~ x_vals)$coefficients[2])
-  }
+  T_pk <- max(dataset$temp[dataset$trait_value == max(dataset$trait_value)])
+  # 
+  # dataset_before_peak <- dataset[dataset$temp < T_pk,]
+  # if ( 
+  #   nrow(dataset_before_peak) < 3 || 
+  #   length(unique(dataset_before_peak$temp)) < 3 || 
+  #   length(unique(dataset_before_peak$trait_value)) < 3 
+  # )
+  # {
+  #   DH_A_start <- 15000
+  # } else
+  # {
+  #   y_vals <- log(dataset_before_peak$trait_value)
+  #   x_vals <- 1/(R * (dataset_before_peak$temp + 273.15))
+  #   
+  #   # Take the absolute value.
+  #   DH_A_start <- abs(lm(y_vals ~ x_vals)$coefficients[2])
+  # }
+  DH_A_start <- 15000
   
   # If the dataset has measurements after the thermal optimum, 
   # a starting value for DH_H can be set as roughly the slope of the 
@@ -370,22 +312,24 @@ fit_Sharpe_Schoolfield_6_pars <- function(dataset)
   # ln(trait_value) ~ intercept + slope * 1/(R * (T + 273.15))
   #
   # Otherwise, just set DH_H to 50000.
-  dataset_after_peak <- dataset[dataset$temp > T_pk,]
-  if ( 
-    nrow(dataset_after_peak) < 3 || 
-    length(unique(dataset_after_peak$temp)) < 3 || 
-    length(unique(dataset_after_peak$trait_value)) < 3 
-  )
-  {
-    DH_H_start <- 50000
-  } else
-  {
-    y_vals <- log(dataset_after_peak$trait_value)
-    x_vals <- 1/(R * (dataset_after_peak$temp + 273.15))
-    
-    # Take the absolute value.
-    DH_H_start <- abs(lm(y_vals ~ x_vals)$coefficients[2])
-  }
+  
+  # dataset_after_peak <- dataset[dataset$temp > T_pk,]
+  # if ( 
+  #   nrow(dataset_after_peak) < 3 || 
+  #   length(unique(dataset_after_peak$temp)) < 3 || 
+  #   length(unique(dataset_after_peak$trait_value)) < 3 
+  # )
+  # {
+  #   DH_H_start <- 50000
+  # } else
+  # {
+  #   y_vals <- log(dataset_after_peak$trait_value)
+  #   x_vals <- 1/(R * (dataset_after_peak$temp + 273.15))
+  #   
+  #   # Take the absolute value.
+  #   DH_H_start <- abs(lm(y_vals ~ x_vals)$coefficients[2])
+  # }
+  DH_H_start <- 50000
   
   # Set the starting value of DH_L arbitrarily to 70000.
   DH_L_start <- 70000
@@ -761,4 +705,3 @@ fit_Ritchie_4_pars <- function(dataset)
   
   return(fit)
 }
-
